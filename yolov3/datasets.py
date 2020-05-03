@@ -58,154 +58,6 @@ def _get_annotations(json_file):
     return annotations
 
 
-# class ListDataset(Dataset):
-#     """
-#     @deprecated
-#     """
-#     def __init__(self, root: str, img_size=416, augment=True, multiscale=True, normalized_labels=True, split='train'):
-#         """
-#         Dataset for files with the structure
-#
-#         - class1
-#         |  - train
-#            |  - image1.jpg
-#            |  - image2.jpg
-#            |  - ...
-#         |  - val
-#            |  - image1.jpg
-#            |  - image2.jpg
-#            |  - ...
-#         - class2
-#            |  - train...
-#
-#         :param root: root directory path where data is present
-#         :param img_size: rescaled image size
-#         :param augment: boolean indicating if data augmentation is going to be applied
-#         :param multiscale: indicates if multi-scale must be used
-#         :param normalized_labels: indicates if labels in the annotation file are normalized
-#         :param split: choose between train and val
-#         """
-#         self.root = root
-#         self.classes = self._find_classes()
-#         self.imgs = []
-#         for i, cls in enumerate(self.classes):
-#             class_path = f"{root}/{cls}/{split}"
-#
-#             annotation_files = [f for f in os.listdir(class_path) if f.endswith('.json')]
-#             img_paths = [f for f in os.listdir(class_path) if is_file(os.path.join(class_path, f)) and is_image_file(f)]
-#             annotations = []
-#             for annotation_file in annotation_files:
-#                 annotations += _get_annotations(os.path.join(class_path, annotation_file))
-#             self.imgs += [dict(filename=os.path.join(class_path, img_path),
-#                                cls=i,
-#                                regions=[ann['regions'] for ann in annotations if ann['filename'] == img_path])
-#                           for img_path in img_paths]
-#
-#         self.img_size = img_size
-#         self.augment = augment
-#         self.multiscale = multiscale
-#         self.normalized_labels = normalized_labels
-#         self.min_size = self.img_size - 3 * 32
-#         self.max_size = self.img_size + 3 * 32
-#         self.batch_count = 0
-#
-#     def _find_classes(self):
-#         """
-#         Finds the class folders in a dataset.
-#
-#         :returns: tuple: (classes, class_to_idx) where classes are relative to (dir), and class_to_idx is a dictionary.
-#
-#         :ensures: No class is a subdirectory of another.
-#         """
-#         if sys.version_info >= (3, 5):
-#             # Faster and available in Python 3.5 and above
-#             classes = [d.name for d in os.scandir(self.root) if d.is_dir()]
-#         else:
-#             classes = [d for d in os.listdir(self.root) if os.path.isdir(os.path.join(self.root, d))]
-#         classes.sort()
-#         return classes
-#
-#     def regions_to_bounding_boxes(self, regions, img):
-#         """
-#         Converts a region dict to bounding boxes
-#         :param regions: regions dict
-#         :param img: original image
-#         :return: bounding boxes
-#         """
-#         _, h, w = img.shape
-#
-#         # Pad to square resolution
-#         img, pad = pad_to_square(img, 0)
-#         _, padded_h, padded_w = img.shape
-#
-#         boxes = None
-#         if len(regions) > 0:
-#             number_of_annotations = sum(len(individual_region_file) for individual_region_file in regions)
-#             boxes = torch.zeros((number_of_annotations, 6))
-#             c = 0
-#             for file_regions in regions:
-#                 for _, region in file_regions.items():
-#                     x_points = region['shape_attributes']['all_points_x']
-#                     y_points = region['shape_attributes']['all_points_y']
-#
-#                     h_factor, w_factor = (h, w) if self.normalized_labels else (1, 1)
-#
-#                     # Unpadded and unscaled image
-#                     x1, x2, y1, y2 = max(x_points), min(x_points), max(y_points), min(y_points)
-#                     x1 *= w_factor
-#                     x2 *= w_factor
-#                     y1 *= h_factor
-#                     y2 *= h_factor
-#                     # Adding paddding
-#                     x1 += pad[0]
-#                     y1 += pad[2]
-#                     x2 += pad[1]
-#                     y2 += pad[2]
-#
-#                     # Obtaining x, y, w, h
-#                     boxes[c, 2] = (x1 + x2) / 2 / padded_w
-#                     boxes[c, 3] = (y1 + y2) / 2 / padded_h
-#                     boxes[c, 4] = (x1 - x2) * w_factor / padded_w
-#                     boxes[c, 5] = (y1 - y2) * h_factor / padded_h
-#                     c += 1
-#         return img, boxes
-#
-#     def __getitem__(self, index: int) -> Tuple[str, torch.Tensor, torch.Tensor]:
-#
-#         img = self.imgs[index % len(self.imgs)]
-#         img_path = img['filename']
-#         img_regions = img['regions']
-#         img_cls = img['cls']
-#         img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
-#         if len(img.shape) != 3:
-#             img = img.unsqueeze(0)
-#             img = img.expand((3, img.shape[1:]))
-#
-#         img, targets = self.regions_to_bounding_boxes(img_regions, img)
-#         if self.augment:
-#             if np.random.random() < 0.5:
-#                 img, targets = horizontal_flip(img, targets)
-#         targets[:, 1] = img_cls
-#         return img_path, img, targets
-#
-#     def collate_fn(self, batch) -> Tuple[Tuple[Tuple[str]], torch.Tensor, torch.Tensor]:
-#         paths, imgs, targets = list(zip(*batch))
-#         targets = [boxes for boxes in targets if boxes is not None]
-#
-#         for i, boxes in enumerate(targets):
-#             boxes[:, 0] = i
-#         targets = torch.cat(targets, 0)
-#         if self.multiscale and self.batch_count % 10 == 0:
-#             self.img_size = random.choice(range(self.min_size, self.max_size + 1, 32))
-#
-#         imgs = torch.stack([resize(img, self.img_size) for img in imgs])
-#         self.batch_count += 1
-#         return paths, imgs, targets
-#
-#     def __len__(self):
-#         return len(self.imgs)
-
-
 class COCODataset(Dataset):
 
     def __init__(self, root: str,
@@ -216,7 +68,8 @@ class COCODataset(Dataset):
                  normalized_labels=True,
                  partition=None,
                  val_split=0.2,
-                 seed=None):
+                 seed=None,
+                 padding_value=0):
         """
         Dataset for files with the structure
 
@@ -242,7 +95,7 @@ class COCODataset(Dataset):
             coco_file = json.load(f)
 
         self.classes = {int(category['id']): category['name'] for category in coco_file['categories']}
-        self._c = [i for i, _ in self.classes.items()]
+        self._c = list(self.classes.keys())
         self._c.sort()
         self._actual_indices = {k: i for i, k in enumerate(self._c)}
         self.imgs = [{"id": int(img['id']),
@@ -268,6 +121,16 @@ class COCODataset(Dataset):
         self.min_size = self.img_size - 3 * 32
         self.max_size = self.img_size + 3 * 32
         self.batch_count = 0
+        self.padding_value = padding_value
+        self.wts = self._get_class_weights()
+
+    def _get_class_weights(self):
+        wts = [0] * len(self._c)
+        for ann in self.anns:
+            cat = ann['category_id']
+            wts[self._actual_indices[cat]] += 1
+        wts = [sum(f for f in wts if f != w) / w for w in wts]
+        return wts
 
     def get_cat_by_positional_id(self, positional_id):
         cat_id = self._c[positional_id]
@@ -283,7 +146,7 @@ class COCODataset(Dataset):
         _, h, w = img.shape
 
         # Pad to square resolution
-        img, pad = pad_to_square(img, 0)
+        img, pad = pad_to_square(img, self.padding_value)
         _, padded_h, padded_w = img.shape
         h_factor, w_factor = (h, w) if self.normalized_labels else (1, 1)
 
@@ -295,12 +158,26 @@ class COCODataset(Dataset):
             for c, ann in enumerate(anns):
                 bbox = ann["bbox"]
 
+                xb, yb, wb, hb = bbox[0], bbox[1], bbox[2], bbox[3]
+
+                # This adjustment is done when having bounding boxes outside the image boundaries
+                if xb < 0:
+                    wb += xb
+                    xb = 0
+                if yb < 0:
+                    hb += yb
+                    yb = 0
+                if xb + wb > w:
+                    wb = w - xb
+                if yb + hb > h:
+                    hb = h - yb
+
                 # Unpadded and unscaled image
                 # IMPORTANT! THIS IS ONLY FOR COCO DATASET
-                x1 = bbox[0] * w_factor
-                x2 = (bbox[0] + bbox[2]) * w_factor
-                y1 = bbox[1] * h_factor
-                y2 = (bbox[1] + bbox[3]) * h_factor
+                x1 = xb * w_factor
+                x2 = (xb + wb) * w_factor
+                y1 = yb * h_factor
+                y2 = (yb + hb) * h_factor
                 # Adding paddding
                 x1 += pad[0]
                 y1 += pad[2]
@@ -317,12 +194,11 @@ class COCODataset(Dataset):
                                    device=boxes.device)
         return img, boxes
 
-    def __getitem__(self, index: int) -> Tuple[str, int, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
 
         img = self.imgs[index]
         anns = [a for a in self.anns if a["image_id"] == img["id"]]
         img_path = os.path.join(self.root, img["file_name"])
-        img_id = img["id"]
 
         img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
         if len(img.shape) != 3:
@@ -333,10 +209,10 @@ class COCODataset(Dataset):
         if self.augment:
             if np.random.random() < 0.5:
                 img, targets = horizontal_flip(img, targets)
-        return img_path, img_id, img, targets
+        return img, targets
 
-    def collate_fn(self, batch) -> Tuple[Tuple[str], Tuple[int], torch.Tensor, torch.Tensor]:
-        paths, img_ids, imgs, targets = list(zip(*batch))
+    def collate_fn(self, batch) -> Tuple[torch.Tensor, torch.Tensor]:
+        imgs, targets = list(zip(*batch))
         targets = [boxes for boxes in targets if boxes is not None]
 
         for i, boxes in enumerate(targets):
@@ -347,7 +223,7 @@ class COCODataset(Dataset):
 
         imgs = torch.stack([resize(img, self.img_size) for img in imgs])
         self.batch_count += 1
-        return paths, img_ids, imgs, targets
+        return imgs, targets
 
     def __len__(self):
         return len(self.imgs)

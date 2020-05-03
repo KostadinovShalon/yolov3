@@ -82,7 +82,7 @@ def ap_per_class(tp: List, conf: List, pred_cls: List, target_cls: List):
     tp, conf, pred_cls = tp[i], conf[i], pred_cls[i]
 
     # Find unique classes
-    unique_classes = np.unique(target_cls)
+    unique_classes = np.sort(np.unique(target_cls))
 
     # Create Precision-Recall curve and compute AP for each class
     ap, p, r = [], [], []

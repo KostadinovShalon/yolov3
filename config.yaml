@@ -18,8 +18,8 @@ model:
     - [373, 326]
 
 train:
-  dir: "data/xray/train/images"
-  annotation_file: "data/xray/train/coco_train.json"
+  dir: "path to images"
+  annotation_file: "path to coco annotation file"
   val_dir: ~
   val_annotation_file: ~
   val_split: 0.2
@@ -32,6 +32,7 @@ train:
   pretrained_weights: "yolov3/pretrained_weights/yolov3-openimages.weights"
   checkpoint_interval: 5
   evaluation_interval: 1
+  augment: false
   compute_map: false  # if True computes mAP every tenth batch
   multiscale_training: true # allow for multi-scale training
   iou_thres: 0.5

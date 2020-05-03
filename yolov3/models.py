@@ -402,14 +402,14 @@ class YOLOv3(nn.Module):
 
         ftrs = self.features_extractor(x)
 
-        #  Big yolo conv
+        #  Big yolov3 conv
         anchors_net_layers_output1 = self.anchors_network_s1(ftrs[-1])
         anchors_net_output1 = anchors_net_layers_output1[-1]
         yolo_outputs_1 = self.yolo_conv_layers[0](anchors_net_output1)
         yolo_outputs_1, layer_loss = self.yolo_layers[0](yolo_outputs_1, targets, img_dim)
         loss += layer_loss
 
-        # Medium yolo conv
+        # Medium yolov3 conv
         pre_anchors2_ftrs = self.pre_anchors_network_2(anchors_net_layers_output1[-2])
 
         pre_anchors2_ftrs = torch.cat([pre_anchors2_ftrs, ftrs[-2]], 1)
@@ -420,7 +420,7 @@ class YOLOv3(nn.Module):
         yolo_outputs_2, layer_loss = self.yolo_layers[1](yolo_outputs_2, targets, img_dim)
         loss += layer_loss
 
-        # Small yolo conv
+        # Small yolov3 conv
         pre_anchors3_ftrs = self.pre_anchors_network_3(anchors_net_layers_output2[-2])
 
         pre_anchors3_ftrs = torch.cat([pre_anchors3_ftrs, ftrs[-3]], 1)

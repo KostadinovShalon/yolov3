@@ -6,7 +6,7 @@ matplotlib
 tensorflow
 tensorboard
 terminaltables
-pillow==1.6
+pillow==6.1
 tqdm
 opencv
 shapely

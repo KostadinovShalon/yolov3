@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from yolov3.datasets import COCODataset
 from yolov3.models import YOLOv3
 from yolov3.utils.boxes import xywh2xyxy, non_max_suppression, rescale_boxes
-from yolov3.utils.parse import ConfigParser
+from yolov3.utils.parser import ConfigParser
 from yolov3.utils.statistics import get_batch_statistics, ap_per_class
 
 import json
@@ -35,44 +35,47 @@ def evaluate(dataset, model, iou_thres, conf_thres, nms_thres, img_size,
     labels = []
     sample_metrics = []  # List of tuples (TP, confs, pred)
     detections = []
-    for batch_i, (file_names, img_ids, imgs, targets) in enumerate(tqdm.tqdm(dataloader, desc="Detecting objects")):
+    evaluation_loss = 0
+    for batch_i, (imgs, targets) in enumerate(tqdm.tqdm(dataloader, desc="Detecting objects")):
 
         # Extract labels
         labels += targets[:, 1].tolist()
         # Rescale target
-        targets[:, 2:] = xywh2xyxy(targets[:, 2:])
-        targets[:, 2:] *= img_size
 
         if device:
-            imgs = imgs.to(device)
+            imgs, targets = imgs.to(device), targets.to(device)
         imgs.requires_grad = False
 
         with torch.no_grad():
-            outputs = model(imgs)
+            loss, outputs = model(imgs, targets)
             outputs = non_max_suppression(outputs, conf_thres=conf_thres, nms_thres=nms_thres)
+        evaluation_loss += loss.item()
+        targets[:, 2:] = xywh2xyxy(targets[:, 2:])
+        targets[:, 2:] *= img_size
+        # for img_path, img_id, dets in zip(file_names, img_ids, outputs):
+        #     if dets is not None:
+        #         for det in dets:
+        #             w, h = Image.open(img_path).convert('RGB').size
+        #             d = det.clone()
+        #             d[:4] = rescale_boxes(d[:4].unsqueeze(0), img_size, (h, w)).squeeze()
+        #             d = d.tolist()
+        #             detections.append({
+        #                 "image_id": img_id,
+        #                 "category_id": dataset._c[int(d[-1])],
+        #                 "bbox": [d[0], d[1], d[2] - d[0], d[3] - d[1]],
+        #                 "score": d[-2]
+        #             })
 
-        for img_path, img_id, dets in zip(file_names, img_ids, outputs):
-            if dets is not None:
-                for det in dets:
-                    w, h = Image.open(img_path).convert('RGB').size
-                    d = det.clone()
-                    d[:4] = rescale_boxes(d[:4].unsqueeze(0), img_size, (h, w)).squeeze()
-                    d = d.tolist()
-                    detections.append({
-                        "image_id": img_id,
-                        "category_id": dataset._c[int(d[-1])],
-                        "bbox": [d[0], d[1], d[2] - d[0], d[3] - d[1]],
-                        "score": d[-2]
-                    })
-        sample_metrics += get_batch_statistics(outputs, targets, iou_threshold=iou_thres)
+        sample_metrics += get_batch_statistics(outputs, targets.cpu(), iou_threshold=iou_thres)
+    evaluation_loss /= len(dataloader)
 
     # Concatenate sample statistics
     true_positives, pred_scores, pred_labels = [np.concatenate(x, 0) for x in list(zip(*sample_metrics))]
-    #  return precision, recall, AP, f1, ap_class
+    p, r, ap, f1, ap_class = ap_per_class(true_positives, pred_scores, pred_labels, labels)
     if return_detections:
-        return ap_per_class(true_positives, pred_scores, pred_labels, labels), detections
+        return evaluation_loss, p, r, ap, f1, ap_class, detections
     else:
-        return ap_per_class(true_positives, pred_scores, pred_labels, labels)
+        return evaluation_loss, p, r, ap, f1, ap_class
 
 
 def test(config_file):
