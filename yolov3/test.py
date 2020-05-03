@@ -1,3 +1,6 @@
+import os
+import json
+
 import numpy as np
 import torch
 import tqdm
@@ -7,10 +10,7 @@ from torch.utils.data import DataLoader
 from yolov3.datasets import COCODataset
 from yolov3.models import YOLOv3
 from yolov3.utils.boxes import xywh2xyxy, non_max_suppression, rescale_boxes
-from yolov3.utils.parser import ConfigParser
 from yolov3.utils.statistics import get_batch_statistics, ap_per_class
-
-import json
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -36,7 +36,12 @@ def evaluate(dataset, model, iou_thres, conf_thres, nms_thres, img_size,
     sample_metrics = []  # List of tuples (TP, confs, pred)
     detections = []
     evaluation_loss = 0
-    for batch_i, (imgs, targets) in enumerate(tqdm.tqdm(dataloader, desc="Detecting objects")):
+    for batch_i, data in enumerate(tqdm.tqdm(dataloader, desc="Detecting objects")):
+        img_paths, img_ids = None, None
+        if return_detections:
+            img_paths, img_ids, imgs, targets = data
+        else:
+            imgs, targets = data
 
         # Extract labels
         labels += targets[:, 1].tolist()
@@ -52,19 +57,20 @@ def evaluate(dataset, model, iou_thres, conf_thres, nms_thres, img_size,
         evaluation_loss += loss.item()
         targets[:, 2:] = xywh2xyxy(targets[:, 2:])
         targets[:, 2:] *= img_size
-        # for img_path, img_id, dets in zip(file_names, img_ids, outputs):
-        #     if dets is not None:
-        #         for det in dets:
-        #             w, h = Image.open(img_path).convert('RGB').size
-        #             d = det.clone()
-        #             d[:4] = rescale_boxes(d[:4].unsqueeze(0), img_size, (h, w)).squeeze()
-        #             d = d.tolist()
-        #             detections.append({
-        #                 "image_id": img_id,
-        #                 "category_id": dataset._c[int(d[-1])],
-        #                 "bbox": [d[0], d[1], d[2] - d[0], d[3] - d[1]],
-        #                 "score": d[-2]
-        #             })
+        if return_detections:
+            for img_path, img_id, dets in zip(img_paths, img_ids, outputs):
+                if dets is not None:
+                    for det in dets:
+                        w, h = Image.open(img_path).convert('RGB').size
+                        d = det.clone()
+                        d[:4] = rescale_boxes(d[:4].unsqueeze(0), img_size, (h, w)).squeeze()
+                        d = d.tolist()
+                        detections.append({
+                            "image_id": img_id,
+                            "category_id": dataset.get_cat_by_positional_id(int(d[-1])),
+                            "bbox": [d[0], d[1], d[2] - d[0], d[3] - d[1]],
+                            "score": d[-2]
+                        })
 
         sample_metrics += get_batch_statistics(outputs, targets.cpu(), iou_threshold=iou_thres)
     evaluation_loss /= len(dataloader)
@@ -78,30 +84,28 @@ def evaluate(dataset, model, iou_thres, conf_thres, nms_thres, img_size,
         return evaluation_loss, p, r, ap, f1, ap_class
 
 
-def test(config_file):
-    opts = ConfigParser(config_file)
-
-    print("Compute mAP...")
-
-    dataset = COCODataset(opts.test["dir"],
-                          annotations_file=opts.test["annotation_file"],
+def test(parser):
+    print("Runnning Test")
+    dataset = COCODataset(parser.test["dir"],
+                          annotations_file=parser.test["annotation_file"],
                           augment=False,
                           multiscale=False,
-                          normalized_labels=opts.test["normalized"],)
+                          normalized_labels=parser.test["normalized"],
+                          include_filenames=True)
 
     # Initiate model
-    model = YOLOv3(len(dataset.classes), anchors=opts.anchors).to(device)
+    model = YOLOv3(len(dataset.classes), anchors=parser.anchors).to(device)
 
-    (precision, recall, AP, f1, ap_class), detections = evaluate(
+    _, precision, recall, AP, f1, ap_class, detections = evaluate(
         dataset,
         model,
-        opts.test["iou_thres"],
-        opts.test["conf_thres"],
-        opts.test["nms_thres"],
-        opts.img_size,
-        opts.workers,
-        opts.test["weights_file"],
-        opts.test["batch_size"],
+        parser.test["iou_thres"],
+        parser.test["conf_thres"],
+        parser.test["nms_thres"],
+        parser.img_size,
+        parser.workers,
+        parser.test["weights_file"],
+        parser.test["batch_size"],
         return_detections=True
     )
 
@@ -111,7 +115,7 @@ def test(config_file):
 
     print(f"mAP: {AP.mean()}")
 
-    json_file_name = opts.test["json_file_output"]
+    json_file_name = os.path.join(parser.db_name, parser.test["json_file_output"])
 
     with open(json_file_name, 'w') as f:
         json.dump(detections, f)

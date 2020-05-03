@@ -69,7 +69,8 @@ class COCODataset(Dataset):
                  partition=None,
                  val_split=0.2,
                  seed=None,
-                 padding_value=0):
+                 padding_value=0,
+                 include_filenames=False):
         """
         Dataset for files with the structure
 
@@ -123,6 +124,7 @@ class COCODataset(Dataset):
         self.batch_count = 0
         self.padding_value = padding_value
         self.wts = self._get_class_weights()
+        self.include_filenames = include_filenames
 
     def _get_class_weights(self):
         wts = [0] * len(self._c)
@@ -194,11 +196,12 @@ class COCODataset(Dataset):
                                    device=boxes.device)
         return img, boxes
 
-    def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int):
 
         img = self.imgs[index]
         anns = [a for a in self.anns if a["image_id"] == img["id"]]
         img_path = os.path.join(self.root, img["file_name"])
+        img_id = img["id"]
 
         img = transforms.ToTensor()(Image.open(img_path).convert('RGB'))
         if len(img.shape) != 3:
@@ -209,10 +212,14 @@ class COCODataset(Dataset):
         if self.augment:
             if np.random.random() < 0.5:
                 img, targets = horizontal_flip(img, targets)
-        return img, targets
+        return (img_path, img_id, img, targets) if self.include_filenames else (img, targets)
 
-    def collate_fn(self, batch) -> Tuple[torch.Tensor, torch.Tensor]:
-        imgs, targets = list(zip(*batch))
+    def collate_fn(self, batch):
+        img_paths, img_ids = None, None
+        if self.include_filenames:
+            img_paths, img_ids, imgs, targets = list(zip(*batch))
+        else:
+            imgs, targets = list(zip(*batch))
         targets = [boxes for boxes in targets if boxes is not None]
 
         for i, boxes in enumerate(targets):
@@ -223,7 +230,7 @@ class COCODataset(Dataset):
 
         imgs = torch.stack([resize(img, self.img_size) for img in imgs])
         self.batch_count += 1
-        return imgs, targets
+        return (img_paths, img_ids, imgs, targets) if self.include_filenames else (imgs, targets)
 
     def __len__(self):
         return len(self.imgs)

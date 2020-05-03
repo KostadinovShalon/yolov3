@@ -18,8 +18,8 @@ model:
     - [373, 326]
 
 train:
-  dir: "path to images"
-  annotation_file: "path to coco annotation file"
+  dir: "/home/brian/Documents/datasets/smith_coco_no_electronics/train/images"
+  annotation_file: "/home/brian/Documents/datasets/smith_coco_no_electronics/train/coco_annotations_no_electronics.json"
   val_dir: ~
   val_annotation_file: ~
   val_split: 0.2
@@ -51,8 +51,8 @@ train:
     gamma: 0.1
 
 test:
-  weights_file: "experiments/test3/weights/yolov3_xray.pt"
-  dir: "data/xray/test/images"
+  weights_file: "/home/brian/Documents/datasets/smith_coco_no_electronics/test/images"
+  dir: "/home/brian/Documents/datasets/smith_coco_no_electronics/test/images"
   annotation_file: "data/xray/test/coco_test.json"
   batch_size: 2
   normalized: false
@@ -62,16 +62,18 @@ test:
   json_file_output: "experiments/test3/test_output.json"
 
 inference:
-  weights_file: "experiments/test3/weights/yolov3_xray.pt"
-  dir: "data/xray/test/images"
+  weights_file: "/home/brian/Documents/datasets/smith_coco_no_electronics/test/images"
+  dir: "/home/brian/Documents/datasets/smith_coco_no_electronics/test/images"
+  # Annotation file is optional. It's used to compare the ground truth with the predictions
+  annotation_file: "/home/brian/Documents/datasets/smith_coco_no_electronics/test/coco_annotations_no_electronics.json"
+  with_gt: false
   batch_size: 8
-  output: "experiments/test3/inference"
   max_images: -1 # Number of maximum images to infer. If -1, infers all from inference directory
   classes:
     - firearm
     - firearmparts
     - knife
-
+    - ceramic knife
   nms_thres: 0.4
   conf_thres: 0.8
 
