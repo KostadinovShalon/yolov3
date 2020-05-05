@@ -1,7 +1,7 @@
 import torch
 
 
-def rescale_boxes(boxes, current_dim, original_shape):
+def rescale_boxes(boxes, current_dim, original_shape, normalized=False, xywh=False):
     """
     Rescales bounding boxes to the original shape
     :param boxes: tensor of normalized boxes
@@ -18,6 +18,10 @@ def rescale_boxes(boxes, current_dim, original_shape):
     unpad_h = current_dim - pad_y
     unpad_w = current_dim - pad_x
     # Rescale bounding boxes to dimension of original image
+    if normalized:
+        boxes = boxes * current_dim
+    if xywh:
+        boxes = xywh2xyxy(boxes)
     boxes[:, 0] = ((boxes[:, 0] - pad_x // 2) / unpad_w) * orig_w
     boxes[:, 1] = ((boxes[:, 1] - pad_y // 2) / unpad_h) * orig_h
     boxes[:, 2] = ((boxes[:, 2] - pad_x // 2) / unpad_w) * orig_w

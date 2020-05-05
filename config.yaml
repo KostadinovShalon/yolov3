@@ -1,8 +1,8 @@
 # Config File
 output_folder: "experiments"
-experiment_name: "test3"
+experiment_name: "no_electronics"
 
-workers: 4
+workers: 8
 img_size: 416
 
 model:
@@ -18,8 +18,8 @@ model:
     - [373, 326]
 
 train:
-  dir: "/home/brian/Documents/datasets/smith_coco_no_electronics/train/images"
-  annotation_file: "/home/brian/Documents/datasets/smith_coco_no_electronics/train/coco_annotations_no_electronics.json"
+  dir: IMAGES DIR
+  annotation_file: ANNOTATIONS DIR
   val_dir: ~
   val_annotation_file: ~
   val_split: 0.2
@@ -51,23 +51,23 @@ train:
     gamma: 0.1
 
 test:
-  weights_file: "/home/brian/Documents/datasets/smith_coco_no_electronics/test/images"
-  dir: "/home/brian/Documents/datasets/smith_coco_no_electronics/test/images"
-  annotation_file: "data/xray/test/coco_test.json"
-  batch_size: 2
+  weights_file: PATH TO WEIGHTS FILE
+  dir: IMAGES DIR
+  annotation_file: ANNOTATIONS FILE
+  batch_size: 8
   normalized: false
   iou_thres: 0.5
   nms_thres: 0.4
   conf_thres: 0.8
-  json_file_output: "experiments/test3/test_output.json"
+  json_file_output: OUTPUT FILE
 
 inference:
-  weights_file: "/home/brian/Documents/datasets/smith_coco_no_electronics/test/images"
-  dir: "/home/brian/Documents/datasets/smith_coco_no_electronics/test/images"
-  # Annotation file is optional. It's used to compare the ground truth with the predictions
-  annotation_file: "/home/brian/Documents/datasets/smith_coco_no_electronics/test/coco_annotations_no_electronics.json"
-  with_gt: false
-  batch_size: 8
+  weights_file: PATH TO WEIGHTS FILE
+  dir: IMAGES DIR
+  annotation_file: ANNOTATIONS FILE (OPTIONAL)
+  normalized: false
+  with_gt: true
+  batch_size: 16
   max_images: -1 # Number of maximum images to infer. If -1, infers all from inference directory
   classes:
     - firearm
@@ -76,6 +76,7 @@ inference:
     - ceramic knife
   nms_thres: 0.4
   conf_thres: 0.8
+  save_structured: true
 
 visdom:
   show: true
