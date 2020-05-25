@@ -28,6 +28,7 @@ def get_dataset_args(parser):
         augment=parser.train["augment"],
         multiscale=parser.train["multiscale_training"],
         normalized_labels=parser.train["normalized"],
+        img_size=parser.img_size
     )
 
     val_dataset_args = dict(
@@ -35,7 +36,8 @@ def get_dataset_args(parser):
         annotations_file=parser.train["annotation_file"],
         augment=False,
         multiscale=False,
-        normalized_labels=parser.train["normalized"]
+        normalized_labels=parser.train["normalized"],
+        img_size=parser.img_size
     )
 
     if parser.train["val_dir"] is None:
