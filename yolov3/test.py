@@ -67,7 +67,7 @@ def evaluate(dataset, model, iou_thres, conf_thres, nms_thres, img_size,
                         d = d.tolist()
                         detections.append({
                             "image_id": img_id,
-                            "category_id": dataset.get_cat_by_positional_id(int(d[-1])),
+                            "category_id": dataset._c[int(d[-1])],
                             "bbox": [d[0], d[1], d[2] - d[0], d[3] - d[1]],
                             "score": d[-2]
                         })
