@@ -94,7 +94,7 @@ def train(parser):
 
     if parser.train["pretrained_weights"]:
         # noinspection PyTypeChecker
-        if parser.train["pretrained_weights"].endswith(".pth"):
+        if parser.train["pretrained_weights"].endswith((".pt", ".pth")):
             model.load_state_dict(torch.load(parser.train["pretrained_weights"]))
         else:
             model.load_yolov3_weights(parser.train["pretrained_weights"])

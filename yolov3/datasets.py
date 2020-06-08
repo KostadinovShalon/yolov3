@@ -192,8 +192,8 @@ class COCODataset(Dataset):
                 boxes[c, 3] = (y1 + y2) / 2 / padded_h
                 boxes[c, 4] = (x2 - x1) * w_factor / padded_w
                 boxes[c, 5] = (y2 - y1) * h_factor / padded_h
-        boxes[:, 1] = torch.tensor(list(map(self._actual_indices.get, boxes[:, 1].tolist())),
-                                   device=boxes.device)
+            boxes[:, 1] = torch.tensor(list(map(self._actual_indices.get, boxes[:, 1].tolist())),
+                                       device=boxes.device)
         return img, boxes
 
     def __getitem__(self, index: int):
