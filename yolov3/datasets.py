@@ -69,8 +69,9 @@ class COCODataset(Dataset):
                  partition=None,
                  val_split=0.2,
                  seed=None,
-                 padding_value=0,
-                 include_filenames=False):
+                 padding_value=1,
+                 include_filenames=False,
+                 ignore_class_indices=None):
         """
         Dataset for files with the structure
 
@@ -96,6 +97,8 @@ class COCODataset(Dataset):
             coco_file = json.load(f)
 
         self.classes = {int(category['id']): category['name'] for category in coco_file['categories']}
+        if ignore_class_indices is not None:
+            self.classes = {k: v for k, v in self.classes.items() if k not in ignore_class_indices}
         self._c = list(self.classes.keys())
         self._c.sort()
         self._actual_indices = {k: i for i, k in enumerate(self._c)}
@@ -103,7 +106,7 @@ class COCODataset(Dataset):
                       "file_name": img['file_name']} for img in coco_file['images']]
         self.anns = [{"image_id": ann['image_id'],
                       "category_id": ann['category_id'],
-                      "bbox": ann['bbox']} for ann in coco_file['annotations']]
+                      "bbox": ann['bbox']} for ann in coco_file['annotations'] if ann['category_id'] in self._c]
 
         if partition is not None:
             if seed is not None:

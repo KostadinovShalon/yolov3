@@ -59,6 +59,7 @@ class ConfigParser:
 
         self.workers = self.get_or_default("workers", 4)
         self.img_size = self.get_or_default("img_size", 544)
+        self.ignore_classes = self.get_or_default("ignore_classes")
 
         self.train = self.get_or_default("train")
         self.test = self.get_or_default("test")

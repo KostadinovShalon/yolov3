@@ -59,7 +59,8 @@ def detect(parser):
                               multiscale=False,
                               normalized_labels=parser.inference["normalized"],
                               include_filenames=True,
-                              img_size=parser.img_size)
+                              img_size=parser.img_size,
+                              ignore_class_indices=parser.ignore_classes)
         dataloader_params["collate_fn"] = dataset.collate_fn
     else:
         dataset = ImageFolder(parser.inference["dir"], img_size=parser.img_size)

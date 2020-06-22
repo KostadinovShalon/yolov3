@@ -79,8 +79,8 @@ def train(parser):
 
     train_dataset_args, val_dataset_args = get_dataset_args(parser)
 
-    dataset = COCODataset(**train_dataset_args)
-    eval_dataset = COCODataset(**val_dataset_args)
+    dataset = COCODataset(**train_dataset_args, ignore_class_indices=parser.ignore_classes)
+    eval_dataset = COCODataset(**val_dataset_args, ignore_class_indices=parser.ignore_classes)
 
     dataloader = torch.utils.data.DataLoader(
         dataset,

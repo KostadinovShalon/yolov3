@@ -92,7 +92,8 @@ def test(parser):
                           multiscale=False,
                           normalized_labels=parser.test["normalized"],
                           include_filenames=True,
-                          img_size=parser.img_size)
+                          img_size=parser.img_size,
+                          ignore_class_indices=parser.ignore_classes)
 
     # Initiate model
     model = YOLOv3(len(dataset.classes), anchors=parser.anchors).to(device)
